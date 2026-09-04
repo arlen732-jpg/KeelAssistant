@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<!--
+  Keel SSH 終端頁面
+  作者：Arlen
+
+  以 xterm.js 呈現遠端 PTY 的原始位元組流。資源全部隨程式打包（xterm.js / xterm.css），
+  刻意不走 CDN——與 Python 沙盒相同的理由：外部相依會把「資源抓不到」變成難懂的逾時錯誤。
+
+  與 .NET 端的通訊全走 WebView2 的 WebMessage 通道，且一律用 Base64 傳位元組：
+  終端資料含大量控制字元與不完整的 UTF-8 序列，當成 JS 字串傳會被解析器破壞。
+-->
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <title>Keel SSH</title>
+  <link rel="stylesheet" href="xterm.css">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #1e1e1e;
+      overflow: hidden;
+    }
+    #term {
+      height: 100%;
+      padding: 4px;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <div id="term"></div>
+  <script src="xterm.js"></script>
+  <script src="terminal.js"></script>
+</body>
+</html>

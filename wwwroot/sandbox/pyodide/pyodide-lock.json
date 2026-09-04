@@ -1,0 +1,110 @@
+{
+ "info": {
+  "abi_version": "2026_0",
+  "arch": "wasm32",
+  "platform": "emscripten_5_0_3",
+  "python": "3.14.0"
+ },
+ "packages": {
+  "numpy": {
+   "depends": [],
+   "file_name": "numpy-2.4.3-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+   "imports": [
+    "numpy"
+   ],
+   "install_dir": "site",
+   "name": "numpy",
+   "package_type": "package",
+   "sha256": "0cad9c1b91f0082e4f959bc0e0bf5835a2efbba6ab3b1e9d1fe6e7e564cca98e",
+   "unvendored_tests": false,
+   "version": "2.4.3"
+  },
+  "pandas": {
+   "depends": [
+    "numpy",
+    "python-dateutil",
+    "pytz",
+    "openpyxl"
+   ],
+   "file_name": "pandas-3.0.2-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+   "imports": [
+    "pandas"
+   ],
+   "install_dir": "site",
+   "name": "pandas",
+   "package_type": "package",
+   "sha256": "51475a2026084c3b600566658fffc95efc5a71593472ab8a561d92a504a15a3e",
+   "unvendored_tests": true,
+   "version": "3.0.2"
+  },
+  "python-dateutil": {
+   "depends": [
+    "six"
+   ],
+   "file_name": "python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+   "imports": [
+    "dateutil"
+   ],
+   "install_dir": "site",
+   "name": "python-dateutil",
+   "package_type": "package",
+   "sha256": "e0dad39eec43965d30ef0dbe870617bd5a7ca795c65fda722a7ab2bbd2b747e3",
+   "unvendored_tests": false,
+   "version": "2.9.0.post0"
+  },
+  "pytz": {
+   "depends": [],
+   "file_name": "pytz-2026.1.post1-py2.py3-none-any.whl",
+   "imports": [
+    "pytz"
+   ],
+   "install_dir": "site",
+   "name": "pytz",
+   "package_type": "package",
+   "sha256": "b746aea4d621b01e8c9c5e8e3a6498daecec99f5bffa429beaf3cd6483b14f61",
+   "unvendored_tests": false,
+   "version": "2026.1.post1"
+  },
+  "six": {
+   "depends": [],
+   "file_name": "six-1.17.0-py2.py3-none-any.whl",
+   "imports": [
+    "six"
+   ],
+   "install_dir": "site",
+   "name": "six",
+   "package_type": "package",
+   "sha256": "c6681057bd87fdec57e811b8e4007bad38deea284052817fa400d542c6423e2d",
+   "unvendored_tests": false,
+   "version": "1.17.0"
+  },
+  "openpyxl": {
+   "name": "openpyxl",
+   "version": "3.1.5",
+   "file_name": "openpyxl-3.1.5-py2.py3-none-any.whl",
+   "install_dir": "site",
+   "sha256": "5282c12b107bffeef825f4617dc029afaf41d0ea60823bbb665ef3079dc79de2",
+   "imports": [
+    "openpyxl"
+   ],
+   "depends": [
+    "et-xmlfile"
+   ],
+   "package_type": "package",
+   "unvendored_tests": false
+  },
+  "et-xmlfile": {
+   "name": "et-xmlfile",
+   "version": "2.0.0",
+   "file_name": "et_xmlfile-2.0.0-py3-none-any.whl",
+   "install_dir": "site",
+   "sha256": "7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa",
+   "imports": [
+    "et_xmlfile"
+   ],
+   "depends": [],
+   "package_type": "package",
+   "unvendored_tests": false
+  }
+ }
+}

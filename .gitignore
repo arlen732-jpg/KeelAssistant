@@ -1,0 +1,29 @@
+# ── .NET 建置產出 ──
+bin/
+obj/
+*.user
+
+# ── Visual Studio ──
+.vs/
+
+# ── 執行期產生（含機敏資料，不進版控）──
+# 本機實際設定（含人名／路徑），範本見 appsettings.sample.json
+appsettings.json
+# DPAPI 密文的 SQL 連線設定
+dbconnections.json
+# DPAPI 密文的 SSH 連線設定
+sshconnections.json
+# 鬧鐘／計時排程持久化
+tasks.json
+# 生活習慣記憶
+memory.json
+# Python 沙盒專屬 WebView2 user data folder
+webview2-sandbox/
+# 音樂播放器 WebView2 user data folder
+webview2-data/
+
+# ── 大型資源（按需下載，不隨版控）──
+# Whisper 模型（ggml-*.bin，約 1.5GB）
+models/
+# 會議錄音檔
+recordings/

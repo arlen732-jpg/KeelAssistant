@@ -1,0 +1,11 @@
+{
+  // 每百萬 token 單價（USD）。官方調價時請自行更新。
+  // 欄位：input / output / cacheWrite(5m) / cacheRead
+  // model 比對用「包含」方式：JSONL 的 model 字串含此 key 即套用。
+  "models": [
+    { "match": "opus",   "input": 15.0, "output": 75.0, "cacheWrite": 18.75, "cacheRead": 1.5 },
+    { "match": "sonnet", "input": 3.0,  "output": 15.0, "cacheWrite": 3.75,  "cacheRead": 0.3 },
+    { "match": "haiku",  "input": 1.0,  "output": 5.0,  "cacheWrite": 1.25,  "cacheRead": 0.1 }
+  ],
+  "default": { "match": "*", "input": 3.0, "output": 15.0, "cacheWrite": 3.75, "cacheRead": 0.3 }
+}

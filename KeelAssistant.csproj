@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- 2026/07/28 - Arlen - 新增通知監看模組：UserNotificationListener 屬 WinRT API，
+         必須把 TFM 指到 Windows SDK 版本才拿得到（原 net8.0-windows 無 WinRT 投影）- Start -->
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <!-- 2026/07/28 - Arlen - 新增通知監看模組 - end -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyTitle>Keel Assistant</AssemblyTitle>
+    <Authors>Arlen</Authors>
+    <Version>1.0.0</Version>
+    <ApplicationIcon>assets\app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2792.45" />
+    <PackageReference Include="NAudio" Version="2.3.0" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.4.0" />
+    <PackageReference Include="Whisper.net" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
+    <!-- 2026/07/22 - Arlen - 新增 SQL 執行模組：MSSQL(MIT) / PostgreSQL(PostgreSQL License) 驅動 + DPAPI(MIT) - Start -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <PackageReference Include="Npgsql" Version="8.0.5" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+    <!-- 2026/07/22 - Arlen - 新增 SQL 執行模組 - end -->
+    <!-- 2026/09/01 - Arlen - 新增 SSH 遠端執行模組：SSH.NET(MIT)。
+         需要 ShellStream 才拿得到 PTY 與即時串流；SshCommand 無互動能力，
+         遇到互動式程式時無法讓 Arlen 接手 - Start -->
+    <PackageReference Include="SSH.NET" Version="2026.0.0" />
+    <!-- 2026/09/01 - Arlen - 新增 SSH 遠端執行模組 - end -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="pricing.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="assets\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- 2026/07/23 - Arlen - 新增 Python 沙盒模組：Pyodide 執行環境（314.0.2）與 wheel 隨程式發佈，
+         沙盒無網路，所有資源必須離線可用 - Start -->
+    <None Update="wwwroot\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- 2026/07/23 - Arlen - 新增 Python 沙盒模組 - end -->
+  </ItemGroup>
+
+</Project>

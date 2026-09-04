@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>Keel Python Sandbox</title>
+</head>
+<body>
+<script type="module">
+// Keel Assistant Python 沙盒 — 宿主頁
+// 作者：Arlen
+//
+// 職責只有兩件：管理 Worker 生命週期、在 .NET 與 Worker 之間轉送訊息。
+// 真正跑 Python 的是 worker.js；每次執行都建立全新 Worker、跑完即 terminate，
+// 藉此保證跨次執行不殘留（全域變數、虛擬檔案系統、被 monkey-patch 的模組）。
+//
+// 不在此頁做逾時控制——逾時由 .NET 端計時並主動送 abort，
+// 因為只有 .NET 端知道使用者設定的秒數，且 terminate 後仍要回報結果給 MCP 呼叫端。
+
+let worker = null;
+let currentReqId = null;
+
+const toHost = (msg) => window.chrome.webview.postMessage(JSON.stringify(msg));
+
+/** 銷毀目前 Worker。terminate() 是硬殺，無限迴圈也停得下來（Worker 內無法自我中止）。 */
+function killWorker() {
+    if (worker) {
+        try { worker.terminate(); } catch { }
+        worker = null;
+    }
+    currentReqId = null;
+}
+
+function startRun(req) {
+    killWorker();
+    currentReqId = req.reqId;
+
+    worker = new Worker('worker.js', { type: 'module' });
+
+    worker.onmessage = (e) => {
+        const data = e.data;
+        // 執行結束（成功或 Python 例外）即回報並銷毀，Worker 不重複使用
+        if (data.kind === 'result') {
+            toHost({ ...data, reqId: currentReqId });
+            killWorker();
+        } else {
+            toHost({ ...data, reqId: currentReqId });
+        }
+    };
+
+    // Worker 自身崩潰（載入失敗、OOM 被瀏覽器回收等）
+    worker.onerror = (e) => {
+        toHost({
+            kind: 'result', reqId: currentReqId, ok: false,
+            error: `沙盒 Worker 異常終止：${e.message || '未知原因'}`
+        });
+        killWorker();
+    };
+
+    worker.postMessage(req);
+}
+
+// .NET → 本頁。用 PostWebMessageAsString 傳 JSON，避免把程式碼塞進
+// ExecuteScriptAsync 字串時的跳脫問題（Python 程式碼含大量引號與反斜線）。
+window.chrome.webview.addEventListener('message', (e) => {
+    let req;
+    try {
+        req = JSON.parse(e.data);
+    } catch {
+        return;
+    }
+
+    if (req.kind === 'run') {
+        startRun(req);
+    } else if (req.kind === 'abort') {
+        // 逾時或記憶體超標：硬殺後由 .NET 端組錯誤訊息，本頁不再回報
+        killWorker();
+    }
+});
+
+// 通知 .NET 端頁面已就緒，可以開始送請求
+toHost({ kind: 'ready' });
+</script>
+</body>
+</html>
