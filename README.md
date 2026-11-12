@@ -1,6 +1,6 @@
 # Keel Assistant
 
-系統匣常駐助理（.NET 8 WinForm），整合八大模組，並開本機 MCP Server 供 Claude（Keel）以工具調用下指令。作者：Arlen。
+系統匣常駐助理（.NET 8 WinForm），整合九大模組，並開本機 MCP Server 供 Claude（Keel）以工具調用下指令。作者：Arlen。
 
 ## 模組
 
@@ -12,6 +12,8 @@
 | 📅 行事曆 | Outlook COM 讀寫，可把會議同步成鬧鐘 |
 | 🗄️ SQL 執行 | MSSQL / PostgreSQL 查詢，帳密以 DPAPI 加密由本程式控管，Claude 只拿得到 SQLConnID |
 | 🐍 Python 沙盒 | Pyodide／WebAssembly 隔離執行，無網路、碰不到真實檔案系統，含 numpy / pandas / openpyxl / Pillow |
+| 🖥️ SSH 終端 | 以 sshId 連遠端主機，持續 shell（cd／export 會延續），可視終端，每條指令人工確認 |
+| 🔔 通知監看 | 輪詢 Windows 通知中心，關鍵聯絡人／被 @ 跳視窗，提到名字只跳氣泡（防漏看 LINE） |
 | 📊 Claude 用量 | 移植 ClaudeUsageMonitor（5h/7d 額度、今日 token/成本、逼近上限通知） |
 
 ## 執行
@@ -227,6 +229,17 @@ claude mcp add --scope user --transport http keel http://127.0.0.1:38600/mcp
 | `sql_query` | `connId`, `sql`, `maxRows?`（預設 200，上限 1000）, `timeoutSec?`（預設 30） | 執行單一 SELECT，回傳 `columns` + `rows` |
 | `sql_exec` | `connId`, `sql`, `timeoutSec?`（預設 60） | 執行寫入語句，**執行前彈窗人工確認**，回傳受影響列數 |
 
+**SSH 終端**
+
+| 工具 | 參數 | 說明 |
+|------|------|------|
+| `ssh_exec` | `sshId`, `command`, `timeoutSec?`（0＝設定檔預設，上限 1800） | 在持續 shell 執行一條指令，**每條都彈窗人工確認**，回傳輸出與 `cwd`。不可跑互動式程式（vim、top 等） |
+| `ssh_status` | `sshId` | 查連線狀態與目前工作目錄，不主動建立連線 |
+| `ssh_open` | `sshId` | 建立連線並把終端視窗帶到前景，讓 Arlen 接手打字 |
+| `ssh_close` | `sshId` | 中斷連線並關閉終端視窗，shell 累積的目錄與環境變數一併清除 |
+
+> 與 SQL 相同，**沒有列舉連線的工具**，`sshId` 由 Arlen 告知；連線在托盤「SSH 連線設定」維護（`sshconnections.json`，不進版控）。
+
 **Python 沙盒**
 
 | 工具 | 參數 | 說明 |
@@ -266,3 +279,18 @@ claude mcp add --scope user --transport http keel http://127.0.0.1:38600/mcp
 → `python_run(code="...", readPaths=["D:\\報表\\庫存.xlsx"])` → 彈窗確認 → 結果寫回 `_sandbox\output`
 
 > 純計算（例如換算單位、驗證演算法、產生測試資料）不必給 `readPaths`，不會跳視窗。
+
+## 模組技術文件
+
+各模組的完整規格（架構圖、API 規格、驗證規則、測試案例、常見問題排查）在 `_Docs/`：
+
+| 文件 | 涵蓋 |
+|------|------|
+| [MCP主機與工具](_Docs/MCP主機與工具.md) | MCP 主機、全部工具、托盤組裝根 |
+| [鬧鐘排程](_Docs/鬧鐘排程.md) | 鬧鐘／計時引擎、Outlook 行事曆 |
+| [SQL執行](_Docs/SQL執行.md) | SQL 連線、`SqlGuard`、寫入確認 |
+| [SSH終端](_Docs/SSH終端.md) | SSH 持續 shell、終端視窗、指令確認 |
+| [Python沙盒](_Docs/Python沙盒.md) | Pyodide 執行引擎、檔案邊界 |
+| [用量監控](_Docs/用量監控.md) | 額度輪詢快照、token 成本估算 |
+
+會議錄音與通知監看尚未建立技術文件。
