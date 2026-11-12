@@ -8,12 +8,10 @@
 |------|------|
 | 🕒 時間服務 | 當下時間/星期/時段 |
 | ⏰ 鬧鐘/計時 | 記憶體 Timer + `tasks.json` 持久化（重啟復原），鬧鈴循環指定音檔 |
-| 🎵 音樂 | WebView2 內嵌線上服務（YouTube 等） |
 | 🎙️ 會議錄音 | 麥克風＋系統音雙軌混音（線上會議適用），事後 Whisper 逐字稿 |
 | 📅 行事曆 | Outlook COM 讀寫，可把會議同步成鬧鐘 |
-| 🧠 生活習慣記憶 | 鍵值式記憶（`memory.json`），供 Keel 記住 Arlen 的作息/偏好 |
 | 🗄️ SQL 執行 | MSSQL / PostgreSQL 查詢，帳密以 DPAPI 加密由本程式控管，Claude 只拿得到 SQLConnID |
-| 🐍 Python 沙盒 | Pyodide／WebAssembly 隔離執行，無網路、碰不到真實檔案系統，含 numpy / pandas / openpyxl |
+| 🐍 Python 沙盒 | Pyodide／WebAssembly 隔離執行，無網路、碰不到真實檔案系統，含 numpy / pandas / openpyxl / Pillow |
 | 📊 Claude 用量 | 移植 ClaudeUsageMonitor（5h/7d 額度、今日 token/成本、逼近上限通知） |
 
 ## 執行
@@ -122,7 +120,7 @@ FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Orders' ORDER BY ORDINAL_POS
 
 ### 可用套件
 
-`numpy 2.4.3`、`pandas 3.0.2`、`openpyxl 3.1.5`（+ python-dateutil / pytz / six），其餘只有標準庫。**沒有網路就沒有 `pip install`**——`pyodide-lock.json` 已裁剪成只含打包的 wheel，用到沒打包的套件會直接失敗，不會卡在連線逾時。
+`numpy 2.4.3`、`pandas 3.0.2`、`openpyxl 3.1.5`、`Pillow 12.2.0`（+ python-dateutil / pytz / six），其餘只有標準庫。Pillow 授權為 MIT-CMU（寬鬆授權）。**沒有網路就沒有 `pip install`**——`pyodide-lock.json` 已裁剪成只含打包的 wheel，用到沒打包的套件會直接失敗，不會卡在連線逾時。
 
 只載入程式碼實際 `import` 到的套件：純標準庫冷啟動約 2 秒，用到 pandas 約 6 秒。
 
@@ -156,7 +154,7 @@ FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Orders' ORDER BY ORDINAL_POS
 
 **每次執行都建立全新 Worker、跑完即銷毀**，所以跨次不會殘留變數、虛擬檔案或被 monkey-patch 的模組。代價是每次重新初始化（2~6 秒），換來的是不必擔心上一次的 `df` 汙染這一次。
 
-WebView2 **用時才建、閒置 5 分鐘整組銷毀**（實測可完全回收 350MB，不殘留行程）。它用專屬的 user data folder，與音樂播放器分屬不同行程樹——**沙盒的建立、銷毀、逾時硬殺都不會影響正在播放的音樂**。
+WebView2 **用時才建、閒置 5 分鐘整組銷毀**（實測可完全回收 350MB，不殘留行程）。它用專屬的 user data folder，與其他 WebView2 分屬不同行程樹，記憶體歸屬才算得清。
 
 > 記憶體上限是外部觀測而非硬性 cap：Pyodide 沒有暴露 WASM 線性記憶體的上限設定，只能從 .NET 端觀測行程記憶體。目的是「不吃光主機記憶體」，精度足夠，但可能超標一兩百 MB 才被抓到。
 
@@ -197,17 +195,10 @@ claude mcp add --scope user --transport http keel http://127.0.0.1:38600/mcp
 |------|------|------|
 | `list_tasks` | — | 列出待命的鬧鐘與計時任務 |
 | `set_alarm` | `at`（HH:mm 或完整日期時間）, `label?`, `loop?` | 絕對時間鬧鐘（已過則排明天） |
-| `set_timer` | `minutes`（>0）, `action?`（`alarm`/`music-stop`）, `label?` | 相對計時 |
+| `set_timer` | `minutes`（>0）, `label?` | 相對計時 |
 | `stop_alarm` | — | 停止響鈴 |
 | `cancel_task` | `id` | 取消單一任務 |
 | `notify` | `message?` | 立即響鈴一次＋彈窗，提醒 Arlen 查看回覆 |
-
-**音樂**
-
-| 工具 | 參數 | 說明 |
-|------|------|------|
-| `play_music` | `url` | 播放音樂 |
-| `stop_music` | — | 停止音樂 |
 
 **會議錄音 / 逐字稿**
 
@@ -228,15 +219,6 @@ claude mcp add --scope user --transport http keel http://127.0.0.1:38600/mcp
 | `calendar_list` | `start?`, `offsetHours?`（預設 24） | 列出「起始時間 + 區間」內的行事曆事件 |
 | `calendar_sync_alarms` | `start?`, `offsetHours?`, `minutesBefore?`（預設 10） | 會議同步成鬧鐘（開始前 N 分鐘響） |
 | `calendar_add` | `subject`, `start`, `end?`, `location?`, `body?`, `reminder?` | 新增 Outlook 行程 |
-
-**生活習慣記憶**
-
-| 工具 | 參數 | 說明 |
-|------|------|------|
-| `memory_set` | `key`, `value`, `tags?` | 記住一筆生活習慣（依 key 覆寫） |
-| `memory_get` | `key` | 讀取單筆記憶 |
-| `memory_list` | `tag?`, `keyword?` | 列出／篩選記憶 |
-| `memory_delete` | `key` | 刪除單筆記憶 |
 
 **SQL 執行**
 
@@ -267,8 +249,7 @@ claude mcp add --scope user --transport http keel http://127.0.0.1:38600/mcp
 
 ### 使用範例
 
-**午睡套餐**：「放這首 YouTube `https://...`，20 分鐘後停音樂、30 分鐘後叫我起床」
-→ `play_music` → `set_timer(20, music-stop)` → `set_timer(30, alarm, "起床囉")`
+**午睡**：「30 分鐘後叫我起床」→ `set_timer(30, "起床囉")`
 
 **會議錄音**：「開錄音」→ `open_recorder(專案路徑)`，人按開始，開完會按停止。
 之後（可能隔了幾小時）「把今天那場會議轉逐字稿」

@@ -392,7 +392,8 @@ public sealed class TokenStats
 public enum ScheduledAction
 {
     Alarm,        // 響鈴（循環音檔）
-    MusicStop     // 停止音樂
+    // 2026/11/10 - Arlen - 音樂模組已移除，此值僅保留讓舊 tasks.json 能反序列化（移除會讓整份排程讀不回來）；不可再新增此類任務
+    MusicStop
 }
 
 public sealed class ScheduledTask
@@ -614,18 +615,5 @@ public sealed class SshExecResult
 
 // 2026/09/01 - Arlen - 新增 SSH 遠端執行模組 - end
 
-// ── 生活習慣記憶（memory.json 持久化）───────────────────────────
-public sealed class MemoryEntry
-{
-    [JsonPropertyName("key")]
-    public string Key { get; set; } = "";
-
-    [JsonPropertyName("value")]
-    public string Value { get; set; } = "";
-
-    [JsonPropertyName("tags")]
-    public string[] Tags { get; set; } = Array.Empty<string>();
-
-    [JsonPropertyName("updatedAt")]
-    public DateTime UpdatedAt { get; set; }
-}
+// 2026/11/10 - Arlen - 移除生活習慣記憶模組（MemoryEntry）- Start
+// 2026/11/10 - Arlen - 移除生活習慣記憶模組 - end

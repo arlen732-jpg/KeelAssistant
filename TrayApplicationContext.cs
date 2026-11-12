@@ -3,9 +3,7 @@ using KeelAssistant.Alarm;
 using KeelAssistant.Api;
 using KeelAssistant.Calendar;
 using KeelAssistant.Db;
-using KeelAssistant.Memory;
 using KeelAssistant.Models;
-using KeelAssistant.Music;
 // 2026/07/28 - Arlen - 新增通知監看模組 - Start
 using KeelAssistant.Notifications;
 // 2026/07/28 - Arlen - 新增通知監看模組 - end
@@ -20,7 +18,7 @@ using KeelAssistant.Usage;
 namespace KeelAssistant;
 
 /// <summary>
-/// Keel Assistant 系統匣常駐主控：整合「鬧鐘/計時」「音樂」「Claude 用量」「時間」四大模組，
+/// Keel Assistant 系統匣常駐主控：整合「鬧鐘/計時」「Claude 用量」「時間」等模組，
 /// 並啟動本機 HTTP API 供 Claude 下指令。單一托盤圖示、選單分區呈現。
 /// </summary>
 public sealed class TrayApplicationContext : ApplicationContext
@@ -48,9 +46,9 @@ public sealed class TrayApplicationContext : ApplicationContext
 
     // ── 新增模組 ──
     private readonly AlarmEngine _alarm;
-    private readonly MusicController _music;
+    // 2026/11/10 - Arlen - 移除音樂與生活記憶模組 - Start
     private readonly CalendarService _calendar;
-    private readonly MemoryStore _memory;
+    // 2026/11/10 - Arlen - 移除音樂與生活記憶模組 - end
     private readonly McpHost _api;
 
     // 2026/07/22 - Arlen - 新增 SQL 執行模組：連線帳密由本程式以 DPAPI 控管，不外流給 Claude - Start
@@ -97,11 +95,10 @@ public sealed class TrayApplicationContext : ApplicationContext
         _store = new CredentialStore();
         _scanner = new TranscriptScanner(pricing);
 
-        // 音樂 + 鬧鐘（鬧鐘到期可觸發停止音樂）
-        _music = new MusicController();
-        _alarm = new AlarmEngine(_settings, baseDir, stopMusic: () => _music.Stop());
+        // 2026/11/10 - Arlen - 移除音樂與生活記憶模組 - Start
+        _alarm = new AlarmEngine(_settings, baseDir);
         _calendar = new CalendarService();
-        _memory = new MemoryStore(baseDir);
+        // 2026/11/10 - Arlen - 移除音樂與生活記憶模組 - end
 
         // 2026/07/22 - Arlen - 新增 SQL 執行模組：連線設定與執行器（設定檔 dbconnections.json 隨執行檔目錄）- Start
         _dbConnections = new DbConnectionStore(baseDir);
@@ -154,7 +151,7 @@ public sealed class TrayApplicationContext : ApplicationContext
         // 2026/07/13 - Arlen - 新增會議錄音模組：注入 McpHost 供 open_recorder / transcribe_recording 等工具使用 - Start
         // 2026/07/22 - Arlen - 新增 SQL 執行模組：注入 McpHost 供 sql_query / sql_exec 使用 - Start
         // 2026/07/23 - Arlen - 新增 Python 沙盒模組：注入 McpHost 供 python_run 等工具使用 - Start
-        _api = new McpHost(_settings.ApiPort, _alarm, _music, _calendar, _memory,
+        _api = new McpHost(_settings.ApiPort, _alarm, _calendar,
                            _recording, _transcription, _models,
                            _dbConnections, _sqlExecutor,
                            // 2026/08/18 - Arlen - 新增 get_usage_5h 工具：一併傳入快照時間 - Start
@@ -237,10 +234,8 @@ public sealed class TrayApplicationContext : ApplicationContext
         alarmRoot.DropDownItems.Add("停止響鈴", null, (_, _) => _alarm.StopRinging());
         menu.Items.Add(alarmRoot);
 
-        // ── 音樂 ──
-        var musicRoot = new ToolStripMenuItem($"🎵 音樂（{(_music.IsPlaying ? "播放中" : "停止")}）");
-        musicRoot.DropDownItems.Add("停止音樂", null, (_, _) => _music.Stop());
-        menu.Items.Add(musicRoot);
+        // 2026/11/10 - Arlen - 移除音樂模組：拿掉托盤「音樂」選單 - Start
+        // 2026/11/10 - Arlen - 移除音樂模組 - end
 
         // 2026/07/13 - Arlen - 新增會議錄音模組：托盤可直接叫出錄音視窗（不必透過 Claude）- Start
         var recState = _recording.State switch
@@ -753,7 +748,7 @@ public sealed class TrayApplicationContext : ApplicationContext
             _usageTimer.Dispose();
             // 2026/06/25 - Arlen - 修「結束無法關閉、背景殘留」：補釋放鬧鐘(Timer/響鈴)與音樂(WebView2)模組 - Start
             _alarm.Dispose();
-            _music.Dispose();
+            // 2026/11/10 - Arlen - 移除音樂模組，不再釋放 _music
             // 2026/06/25 - Arlen - 修「結束無法關閉、背景殘留」- end
             // 2026/07/13 - Arlen - 新增會議錄音模組：釋放擷取裝置並關檔（錄音中結束程式仍保住已錄內容）- Start
             _recording.Changed -= OnRecordingChanged;

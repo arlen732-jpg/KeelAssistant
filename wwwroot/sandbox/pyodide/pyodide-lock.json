@@ -105,6 +105,19 @@
    "depends": [],
    "package_type": "package",
    "unvendored_tests": false
+  },
+  "pillow": {
+   "name": "Pillow",
+   "version": "12.2.0",
+   "file_name": "pillow-12.2.0-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+   "install_dir": "site",
+   "sha256": "a50d83a8a76d646768e99e93ed5bf365d0b83563fd8b597e77562e75c8f575a9",
+   "imports": [
+    "PIL"
+   ],
+   "depends": [],
+   "package_type": "package",
+   "unvendored_tests": false
   }
  }
 }

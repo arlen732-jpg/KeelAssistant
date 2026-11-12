@@ -7,7 +7,7 @@ using KeelAssistant.Models;
 namespace KeelAssistant.Db;
 
 /// <summary>
-/// SQL 連線設定的持久化儲存（dbconnections.json），沿用 <see cref="Memory.MemoryStore"/>
+/// SQL 連線設定的持久化儲存（dbconnections.json），沿用 MemoryStore（已移除）
 /// 的 Load/Save + lock 模式。
 ///
 /// 密碼以 DPAPI（CurrentUser scope）加密後才寫檔：密文綁定目前 Windows 使用者帳號，

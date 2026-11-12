@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 版本控制：SVN
+## 版本控制：Git
 
 ## 專案簡介
 
@@ -26,30 +26,28 @@ dotnet run        # 執行（出現在系統匣，單一實例，Mutex 防多開
 
 `Program.cs` 用 Mutex 確保單一實例，`ApplicationConfiguration.Initialize()` 後以 `using` 建立 `TrayApplicationContext` 並 `Application.Run`；結束時強制 `Environment.Exit(0)`，確保 Kestrel／WebView2 殘留執行緒不會卡住行程退出。
 
-`TrayApplicationContext.cs` 是整個應用的組裝根：建立 `NotifyIcon`、初始化五大模組實例（`AlarmEngine`、`MusicController`、`CalendarService`、`MemoryStore`、用量輪詢用的 `CredentialStore`/`TranscriptScanner`/`OAuthUsageClient`），再把這些單例塞進 `McpHost` 供 MCP 工具方法使用。托盤選單在每次 `Opening` 時透過 `RebuildMenuItems` 全部重建（非增量更新）。
+`TrayApplicationContext.cs` 是整個應用的組裝根：建立 `NotifyIcon`、初始化各模組實例（`AlarmEngine`、`CalendarService`、用量輪詢用的 `CredentialStore`/`TranscriptScanner`/`OAuthUsageClient`），再把這些單例塞進 `McpHost` 供 MCP 工具方法使用。托盤選單在每次 `Opening` 時透過 `RebuildMenuItems` 全部重建（非增量更新）。
 
 ### MCP Server（`Api/`）
 
 - `McpHost.cs`：內嵌 Kestrel（`WebApplication.CreateSlimBuilder`），只綁 `IPAddress.Loopback`，`Stateless = true`，用 `WithToolsFromAssembly()` 掃描組件內所有 `[McpServerToolType]`。各模組單例以 `AddSingleton` 注入 DI，供工具方法用參數注入取得。
 - `UiDispatcher`：所有需要碰 WinForms 視窗或 Outlook COM（需 STA）的 MCP 工具呼叫，必須透過此類別的 `Send`/`Send<T>`（用建構時記下的 UI `SynchronizationContext`）切回 UI 執行緒同步執行，否則會有跨執行緒例外或 COM 執行緒模型錯誤。
-- `KeelTools.cs`：實際的 `[McpServerTool]` 工具方法定義（`get_time`、`set_alarm`、`play_music`、`calendar_add` 等，完整清單見 `README.md`／`MCP-Setup.md`）。新增工具時比照既有方法在此檔案加上 `[McpServerTool]` 方法，並經由建構子注入的模組單例操作狀態。
+- `KeelTools.cs`：實際的 `[McpServerTool]` 工具方法定義（`get_time`、`set_alarm`、`calendar_add` 等，完整清單見 `README.md`／`MCP-Setup.md`）。新增工具時比照既有方法在此檔案加上 `[McpServerTool]` 方法，並經由建構子注入的模組單例操作狀態。
 - 因為常駐狀態（鬧鐘排程、音樂播放中、用量快照）活在這個 WinForm process 記憶體裡，MCP 必須用 **HTTP transport**（非 stdio），否則每次呼叫都是新行程、狀態會遺失。
 
 ### 功能模組
 
-- `Alarm/AlarmEngine.cs`：鬧鐘/計時引擎，記憶體 Timer + `tasks.json` 持久化（重啟後復原排程），到期可觸發 `stopMusic` callback 連動音樂模組。
-- `Music/MusicController.cs` + `MusicForm.cs`：以 WebView2 內嵌播放線上服務網址（YouTube 等）。
+- `Alarm/AlarmEngine.cs`：鬧鐘/計時引擎，記憶體 Timer + `tasks.json` 持久化（重啟後復原排程）。音樂模組已於 2026/11/10 移除；`ScheduledAction.MusicStop` 僅為相容舊 `tasks.json` 而保留（到期直接略過），不可刪除也不可再使用。
 - `Calendar/CalendarService.cs`：透過 Outlook COM 互操作讀寫行事曆，因此相關呼叫需經 `UiDispatcher` 切到 STA 執行緒。
-- `Memory/MemoryStore.cs`：鍵值式生活習慣記憶儲存（給 Keel 的 `memory_*` 工具用，與本專案的開發用 auto-memory 是不同機制）。
 - `Db/`：SQL 執行模組（MSSQL / PostgreSQL）。`DbConnectionStore` 以 DPAPI（CurrentUser + 額外熵值）加密密碼存於 `dbconnections.json`，明文密碼只在 `BuildConnectionString` 內部短暫存在；`SqlGuard` 是語句分類器（剝除註解/字串常值後比對關鍵字，回傳 ReadOnly/Write/Blocked，認不出來的一律歸 Write）；`SqlExecutor` 執行並轉 JSON，唯讀連線會包一層永不 commit 的交易（PG 用 `SET TRANSACTION READ ONLY`），例外訊息會遮蔽主機名與帳號；`DbConnectionForm`/`SqlConfirmForm` 分別是連線設定與寫入前的人工確認視窗。
   - **MCP 刻意不提供列舉連線的工具**，`connId` 必須由 Arlen 主動告知，`ResolveConnection` 的錯誤訊息也不列出可用代號（避免變相列舉）。修改此模組時請維持這個約束。
   - 安全設計是三層：DB 端唯讀帳號（主防線）→ `SqlGuard`（防呆）→ 唯讀交易（兜底）。`SqlGuard` 是啟發式的，不可當成唯一防線。
-- `Sandbox/`：Python 沙盒模組（Pyodide / WebAssembly）。`PyodideRunner` 以 WebView2 載入 `wwwroot/sandbox/` 內隨程式打包的 Pyodide 314.0.2（CPython 3.14 + numpy/pandas/openpyxl），跑 LLM 產生的 Python；`SandboxPaths` 負責檔案邊界（黑名單、連結解析、大小上限、輸出不覆蓋）；`SandboxConfirmForm` 是讀檔前的人工確認視窗。
+- `Sandbox/`：Python 沙盒模組（Pyodide / WebAssembly）。`PyodideRunner` 以 WebView2 載入 `wwwroot/sandbox/` 內隨程式打包的 Pyodide 314.0.2（CPython 3.14 + numpy/pandas/openpyxl/Pillow），跑 LLM 產生的 Python；`SandboxPaths` 負責檔案邊界（黑名單、連結解析、大小上限、輸出不覆蓋）；`SandboxConfirmForm` 是讀檔前的人工確認視窗。
   - **隔離來自 WASM 本身**：沒有 syscall、沒有真實檔案系統、沒有 socket。威脅模型是「誤傷」而非「刻意逃逸」——WASM 對前者是完備的，因此不採容器方案（省掉 Docker 常駐與映像維護）。
   - **三個併發設計不可拿掉**（多個 Claude Code session 與 SubAgent 共用同一個 `Stateless=true` 的 MCP Server，沒有 session 身分可區分）：`SemaphoreSlim(1,1)` 全域序列化、每次執行建新 Worker 跑完即銷毀、**逾時等待跑在執行緒池而非 `UiDispatcher`**。
-  - WebView2 用**專屬的 `webview2-sandbox` user data folder**，與音樂播放器的 WebView2 分屬不同行程樹。這既讓記憶體歸屬算得清（看門狗據此判斷是否超過 `SandboxMemoryLimitMb`），也讓沙盒的建立／銷毀完全不影響音樂播放。修改時請維持分開。
+  - WebView2 用**專屬的 `webview2-sandbox` user data folder**，與其他 WebView2 分屬不同行程樹，讓記憶體歸屬算得清（看門狗據此判斷是否超過 `SandboxMemoryLimitMb`）。修改時請維持分開。
   - WebView2 用時才建、閒置 `SandboxIdleShutdownMinutes` 後整組銷毀（實測可完全回收，不殘留 `msedgewebview2.exe`）。
-  - `wwwroot/sandbox/pyodide/pyodide-lock.json` 是**裁剪過的**——只列隨程式打包的 7 個 wheel，讓 `loadPackagesFromImports` 遇到未打包的套件直接失敗，而不是去 CDN 抓（沙盒無網路，否則會變成難懂的逾時錯誤）。其中 `openpyxl` 刻意掛成 `pandas` 的相依，因為 pandas 是在 `to_excel` 內部才延遲 import，靜態掃不到。
+  - `wwwroot/sandbox/pyodide/pyodide-lock.json` 是**裁剪過的**——只列隨程式打包的 8 個 wheel（含 Pillow 12.2.0，取自官方 Pyodide 314.0.2 套件庫，sha256 已驗證），讓 `loadPackagesFromImports` 遇到未打包的套件直接失敗，而不是去 CDN 抓（沙盒無網路，否則會變成難懂的逾時錯誤）。其中 `openpyxl` 刻意掛成 `pandas` 的相依，因為 pandas 是在 `to_excel` 內部才延遲 import，靜態掃不到。
 - `Notifications/`：Windows 通知監看（防漏看 LINE 訊息）。`NotificationWatcher` 以 `UserNotificationListener` 每 3 秒輪詢通知中心，比對 `appsettings.json` 的三組規則後跳 `MentionAlertForm`（置頂但不搶焦點）或托盤氣泡。
   - **刻意用輪詢而非 `NotificationChanged` 事件**：該事件在傳統桌面程式上長期不可靠，輪詢成本僅毫秒級。同理，**不掃 UI**——通知的視覺元素無穩定定位點，`UserNotificationListener` 才是官方管道。
   - **強弱兩級訊號不可合併**：關鍵聯絡人／被 @ 屬強訊號才准跳視窗；「內文提到名字」誤報率高，只跳氣泡。合併後會因警報疲勞讓整個機制失效。
@@ -75,7 +73,21 @@ Python 沙盒設定同樣在 `appsettings.json`：`SandboxRoot`（預設 `C:\Vis
 
 ## 模組技術文件
 
-目前無獨立技術文件（`_doc/` 已於 2026/07/23 移除）。模組說明以本檔的「架構」段落與 `README.md` 為準；需要時再用 `GenAnalysis` 重新產出並在此建立索引表格。
+| 模組名稱 | 文件路徑 | 程式路徑 | 說明 |
+|----------|----------|----------|------|
+| McpHost | [_Docs/MCP主機與工具.md](_Docs/MCP主機與工具.md#mcphost-mcp-主機) | `Api/McpHost.cs` | 內嵌 Kestrel MCP 主機，UI 執行緒切換與錯誤日誌 |
+| KeelTools | [_Docs/MCP主機與工具.md](_Docs/MCP主機與工具.md#keeltools-mcp-工具集) | `Api/KeelTools.cs` | MCP 工具的參數驗證、轉派與錯誤透出 |
+| Tray | [_Docs/MCP主機與工具.md](_Docs/MCP主機與工具.md#tray-托盤組裝根) | `TrayApplicationContext.cs` | 單一實例進入點、模組組裝、托盤選單 |
+| AlarmEngine | [_Docs/鬧鐘排程.md](_Docs/鬧鐘排程.md#alarmengine-鬧鐘引擎) | `Alarm/` | 每秒檢查到期任務並響鈴，tasks.json 持久化 |
+| CalendarService | [_Docs/鬧鐘排程.md](_Docs/鬧鐘排程.md#calendarservice-outlook-行事曆) | `Calendar/CalendarService.cs` | Outlook COM 查詢與新增行程，同步成會議鬧鐘 |
+| Db | [_Docs/SQL執行.md](_Docs/SQL執行.md#db-sql執行) | `Db/` | 以代號執行 MSSQL/PG，三層防護加寫入確認 |
+| Ssh | [_Docs/SSH終端.md](_Docs/SSH終端.md#ssh-ssh終端) | `Ssh/` | 持續 shell 遠端執行，可視終端，逐條確認 |
+| PyodideRunner | [_Docs/Python沙盒.md](_Docs/Python沙盒.md#pyodiderunner-執行引擎) | `Sandbox/PyodideRunner.cs` | WebView2+Pyodide 執行 Python，序列化與閒置回收 |
+| SandboxPaths | [_Docs/Python沙盒.md](_Docs/Python沙盒.md#sandboxpaths-檔案邊界與人工確認) | `Sandbox/SandboxPaths.cs` | 沙盒路徑邊界、機敏檔黑名單與讀檔確認 |
+| UsagePolling | [_Docs/用量監控.md](_Docs/用量監控.md#usagepolling-額度輪詢與快照) | `Usage/OAuthUsageClient.cs` | 托盤輪詢額度存共享快照，MCP 只讀快照 |
+| CostEstimation | [_Docs/用量監控.md](_Docs/用量監控.md#costestimation-本機-token-成本估算) | `Usage/TranscriptScanner.cs` | 增量掃 transcript，依 pricing.json 估算成本 |
+
+尚未建立文件：`Recording/`（會議錄音）、`Notifications/`（通知監看）。
 
 ## 程式碼慣例（此專案內已觀察到的既有風格）
 

@@ -2,9 +2,7 @@ using System.ComponentModel;
 using KeelAssistant.Alarm;
 using KeelAssistant.Calendar;
 using KeelAssistant.Db;
-using KeelAssistant.Memory;
 using KeelAssistant.Models;
-using KeelAssistant.Music;
 using KeelAssistant.Recording;
 using KeelAssistant.Sandbox;
 // 2026/09/01 - Arlen - 新增 SSH 遠端執行模組 - Start
@@ -47,20 +45,17 @@ public static class KeelTools
         return alarm.AddAlarm(fireAt, (label ?? "鬧鐘").Trim(), loop);
     }
 
-    [McpServerTool(Name = "set_timer"), Description("設定相對計時。minutes 分鐘後執行 action：alarm（響鈴提醒）或 music-stop（停止音樂）。")]
+    // 2026/11/10 - Arlen - 移除音樂模組：拿掉 music-stop 動作，只剩響鈴提醒 - Start
+    [McpServerTool(Name = "set_timer"), Description("設定相對計時。minutes 分鐘後響鈴提醒。")]
     public static ScheduledTask SetTimer(
         AlarmEngine alarm,
         [Description("幾分鐘後觸發，需 > 0")] double minutes,
-        [Description("動作：alarm 或 music-stop，預設 alarm")] string action = "alarm",
         [Description("任務標籤")] string? label = null)
     {
         if (minutes <= 0) throw new ArgumentException("minutes 需 > 0");
-        var act = action.ToLowerInvariant() is "music-stop" or "musicstop" or "music.stop"
-            ? ScheduledAction.MusicStop
-            : ScheduledAction.Alarm;
-        var finalLabel = label ?? (act == ScheduledAction.MusicStop ? "停止音樂" : "計時提醒");
-        return alarm.AddRelative(minutes, act, finalLabel.Trim());
+        return alarm.AddRelative(minutes, ScheduledAction.Alarm, (label ?? "計時提醒").Trim());
     }
+    // 2026/11/10 - Arlen - 移除音樂模組 - end
 
     [McpServerTool(Name = "stop_alarm"), Description("停止目前正在響的鬧鈴。")]
     public static object StopAlarm(AlarmEngine alarm, UiDispatcher ui)
@@ -91,23 +86,8 @@ public static class KeelTools
         return new { notified = true, message = label };
     }
 
-    // ── 音樂 ──────────────────────────────────────────────────────
-
-    [McpServerTool(Name = "play_music"), Description("以內嵌 WebView2 播放線上音樂（YouTube 等），傳入完整網址。")]
-    public static object PlayMusic(MusicController music, UiDispatcher ui, [Description("音樂網址")] string url)
-    {
-        if (string.IsNullOrWhiteSpace(url)) throw new ArgumentException("缺少 url");
-        var trimmed = url.Trim();
-        ui.Send(() => music.Play(trimmed));
-        return new { playing = true, url = trimmed };
-    }
-
-    [McpServerTool(Name = "stop_music"), Description("停止音樂播放並隱藏播放視窗。")]
-    public static object StopMusic(MusicController music, UiDispatcher ui)
-    {
-        ui.Send(() => music.Stop());
-        return new { stopped = true };
-    }
+    // 2026/11/10 - Arlen - 移除音樂工具（play_music/stop_music），已不使用 - Start
+    // 2026/11/10 - Arlen - 移除音樂工具 - end
 
     // ── 會議錄音 ──────────────────────────────────────────────────
 
@@ -321,47 +301,8 @@ public static class KeelTools
         return new { entryId };
     }
 
-    // ── 生活習慣記憶 ──────────────────────────────────────────────
-
-    [McpServerTool(Name = "memory_set"), Description("記住一筆 Arlen 的生活習慣（非開發相關），依 key 覆寫。可附 tags 方便分類查詢。")]
-    public static MemoryEntry MemorySet(
-        MemoryStore memory,
-        [Description("記憶的鍵，例如「睡眠時間」")] string key,
-        [Description("記憶內容，例如「約 00:30 就寢」")] string value,
-        [Description("分類標籤，逗號分隔，例如「作息,飲食」")] string? tags = null)
-    {
-        if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("缺少 key");
-        if (string.IsNullOrWhiteSpace(value)) throw new ArgumentException("缺少 value");
-        var tagList = ParseTags(tags);
-        return memory.Set(key.Trim(), value.Trim(), tagList);
-    }
-
-    [McpServerTool(Name = "memory_get"), Description("依 key 讀取一筆生活習慣記憶。")]
-    public static object MemoryGet(MemoryStore memory, [Description("記憶的鍵")] string key)
-    {
-        if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("缺少 key");
-        var entry = memory.Get(key.Trim());
-        if (entry is null) throw new InvalidOperationException("找不到該記憶");
-        return entry;
-    }
-
-    [McpServerTool(Name = "memory_list"), Description("列出所有生活習慣記憶，可用 tag 篩選分類，也可用 keyword 對 key/value/tags 做模糊比對（不分大小寫）。")]
-    public static IReadOnlyList<MemoryEntry> MemoryList(
-        MemoryStore memory,
-        [Description("篩選標籤，省略則不篩選")] string? tag = null,
-        [Description("模糊搜尋關鍵字，比對 key/value/tags，省略則不篩選")] string? keyword = null)
-        => memory.List(
-            string.IsNullOrWhiteSpace(tag) ? null : tag.Trim(),
-            string.IsNullOrWhiteSpace(keyword) ? null : keyword.Trim());
-
-    [McpServerTool(Name = "memory_delete"), Description("依 key 刪除一筆生活習慣記憶。")]
-    public static object MemoryDelete(MemoryStore memory, [Description("記憶的鍵")] string key)
-    {
-        if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("缺少 key");
-        var ok = memory.Delete(key.Trim());
-        if (!ok) throw new InvalidOperationException("找不到該記憶");
-        return new { deleted = true, key };
-    }
+    // 2026/11/10 - Arlen - 移除生活習慣記憶工具（memory_set/get/list/delete），已不使用 - Start
+    // 2026/11/10 - Arlen - 移除生活習慣記憶工具 - end
 
     // 2026/07/22 - Arlen - 新增 SQL 執行模組：帳密由 KeelAssistant 控管，Claude 只拿得到 SQLConnID - Start
 
@@ -501,7 +442,7 @@ public static class KeelTools
 
     // ── Python 沙盒（Pyodide / WebAssembly）────────────────────────
 
-    [McpServerTool(Name = "python_run"), Description("在隔離的 WebAssembly 沙盒內執行 Python 程式碼（CPython 3.14，可用 numpy／pandas／openpyxl，其餘只有標準庫）。沙盒沒有網路、碰不到真實檔案系統，因此誤產生的破壞性程式碼不會影響環境。要讀取檔案時用 readPaths 明確列出（可用絕對路徑），會跳出視窗請 Arlen 確認；純計算不會打擾他。程式碼寫檔到 output/ 目錄的內容會被取回並存到沙盒 output 目錄。最後一行若是運算式，其 repr 會一併回傳。")]
+    [McpServerTool(Name = "python_run"), Description("在隔離的 WebAssembly 沙盒內執行 Python 程式碼（CPython 3.14，可用 numpy／pandas／openpyxl／Pillow，其餘只有標準庫）。沙盒沒有網路、碰不到真實檔案系統，因此誤產生的破壞性程式碼不會影響環境。要讀取檔案時用 readPaths 明確列出（可用絕對路徑），會跳出視窗請 Arlen 確認；純計算不會打擾他。程式碼寫檔到 output/ 目錄的內容會被取回並存到沙盒 output 目錄。最後一行若是運算式，其 repr 會一併回傳。")]
     public static Task<object> PythonRun(
         PyodideRunner sandbox,
         SandboxPaths paths,
@@ -596,7 +537,9 @@ public static class KeelTools
             memoryLimitMb = sandbox.MemoryLimitMb,
             maxFileSizeMb = paths.MaxFileSizeMb,
             python = "3.14 (Pyodide 314.0.2 / WebAssembly)",
-            packages = new[] { "numpy 2.4.3", "pandas 3.0.2", "openpyxl 3.1.5", "python-dateutil", "pytz", "six" },
+            // 2026/10/06 - Arlen - 沙盒新增 Pillow 供圖片處理（如去背） - Start
+            packages = new[] { "numpy 2.4.3", "pandas 3.0.2", "openpyxl 3.1.5", "Pillow 12.2.0", "python-dateutil", "pytz", "six" },
+            // 2026/10/06 - Arlen - 沙盒新增 Pillow 供圖片處理（如去背） - end
             notes = "沙盒無網路，無法 pip install；未列出的第三方套件一律不可用。寫檔請寫到 output/ 之下才會被取回。"
         });
 
@@ -719,12 +662,6 @@ public static class KeelTools
     }
 
     // 2026/07/22 - Arlen - 新增 SQL 執行模組的共用參數解析 - end
-
-    /// <summary>解析逗號分隔的標籤字串，去除空白與空項目。</summary>
-    private static string[] ParseTags(string? tags)
-        => string.IsNullOrWhiteSpace(tags)
-            ? Array.Empty<string>()
-            : tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     /// <summary>解析起始時間（yyyy/MM/dd HH:mm 等，保留時間），失敗或空值則回傳現在。</summary>
     private static DateTime ParseStartOrNow(string? s)

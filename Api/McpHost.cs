@@ -2,9 +2,7 @@ using System.Net;
 using KeelAssistant.Alarm;
 using KeelAssistant.Calendar;
 using KeelAssistant.Db;
-using KeelAssistant.Memory;
 using KeelAssistant.Models;
-using KeelAssistant.Music;
 using KeelAssistant.Recording;
 using KeelAssistant.Sandbox;
 // 2026/09/01 - Arlen - 新增 SSH 遠端執行模組 - Start
@@ -21,7 +19,7 @@ namespace KeelAssistant.Api;
 /// 本機 MCP Server（內嵌 Kestrel，僅綁 127.0.0.1，避開 IIS 佔用的 80/443/8080）。
 /// 以 Streamable HTTP transport 對外，Claude（Keel）透過 MCP 工具直接調用：
 ///   claude mcp add --transport http keel http://127.0.0.1:38600/mcp
-/// 常駐狀態（鬧鐘 / 音樂 / 用量）活在 WinForm process，故只能用 HTTP transport，不可用 stdio。
+/// 常駐狀態（鬧鐘 / 錄音 / 用量）活在 WinForm process，故只能用 HTTP transport，不可用 stdio。
 /// 取代原 HttpApiServer（REST）。
 /// </summary>
 public sealed class McpHost
@@ -31,9 +29,9 @@ public sealed class McpHost
     public McpHost(
         int port,
         AlarmEngine alarm,
-        MusicController music,
+        // 2026/11/10 - Arlen - 移除音樂與生活記憶模組（不再注入 MusicController / MemoryStore）- Start
         CalendarService calendar,
-        MemoryStore memory,
+        // 2026/11/10 - Arlen - 移除音樂與生活記憶模組 - end
         // 2026/07/13 - Arlen - 新增會議錄音模組（含 Whisper 事後逐字稿轉檔）- Start
         RecordingController recording,
         TranscriptionService transcription,
@@ -73,9 +71,9 @@ public sealed class McpHost
 
         // 把現有常駐單例注入 DI，供工具方法以參數注入取用。
         builder.Services.AddSingleton(alarm);
-        builder.Services.AddSingleton(music);
+        // 2026/11/10 - Arlen - 移除音樂與生活記憶模組 - Start
         builder.Services.AddSingleton(calendar);
-        builder.Services.AddSingleton(memory);
+        // 2026/11/10 - Arlen - 移除音樂與生活記憶模組 - end
         // 2026/07/13 - Arlen - 新增會議錄音模組（含 Whisper 事後逐字稿轉檔）- Start
         builder.Services.AddSingleton(recording);
         builder.Services.AddSingleton(transcription);

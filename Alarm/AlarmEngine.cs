@@ -15,7 +15,6 @@ public sealed class AlarmEngine : IDisposable
     private readonly string _tasksPath;
     private readonly string _baseDir;
     private readonly AppSettings _settings;
-    private readonly Action _stopMusic;
 
     private readonly System.Windows.Forms.Timer _timer;
     private readonly List<ScheduledTask> _tasks = new();
@@ -33,11 +32,12 @@ public sealed class AlarmEngine : IDisposable
         Converters = { new JsonStringEnumConverter() }
     };
 
-    public AlarmEngine(AppSettings settings, string baseDir, Action stopMusic)
+    // 2026/11/10 - Arlen - 移除音樂模組：拿掉 stopMusic callback - Start
+    public AlarmEngine(AppSettings settings, string baseDir)
     {
         _settings = settings;
         _baseDir = baseDir;
-        _stopMusic = stopMusic;
+    // 2026/11/10 - Arlen - 移除音樂模組 - end
         _tasksPath = Path.Combine(baseDir, "tasks.json");
 
         Load();
@@ -159,9 +159,10 @@ public sealed class AlarmEngine : IDisposable
     {
         switch (task.Action)
         {
+            // 2026/11/10 - Arlen - 移除音樂模組：舊 tasks.json 殘留的 MusicStop 任務到期時直接略過，不可落入 default 響鈴 - Start
             case ScheduledAction.MusicStop:
-                try { _stopMusic(); } catch { }
                 break;
+            // 2026/11/10 - Arlen - 移除音樂模組 - end
 
             case ScheduledAction.Alarm:
             default:

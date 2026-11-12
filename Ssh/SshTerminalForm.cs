@@ -12,7 +12,7 @@ namespace KeelAssistant.Ssh;
 ///   1. <b>雙向</b>——除了看，Arlen 還能直接在視窗裡打字。哨符機制在遇到互動式程式
 ///      （nano、apt 的設定檔衝突對話框）時必然失效，那時唯一的出路就是人工接手，
 ///      所以這個視窗不能是唯讀的日誌檢視器。
-///   2. <b>常駐可重複開啟</b>——比照 <see cref="Music.MusicForm"/> 攔截使用者關閉改為隱藏。
+///   2. <b>常駐可重複開啟</b>——比照原 MusicForm（已移除）攔截使用者關閉改為隱藏。
 ///      按 X 就 Dispose 掉 WebView2 的話，下次執行指令要整組重建，終端歷史也沒了。
 ///
 /// 專屬的 webview2-ssh user data folder：與音樂、Python 沙盒分屬不同行程樹，
